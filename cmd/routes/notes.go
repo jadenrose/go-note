@@ -14,44 +14,18 @@ type Note struct {
 	Blocks []Block `json:"content"`
 }
 
+func Index(c echo.Context) error {
+	notes, err := getAllPreviews()
+	if err != nil {
+		return c.NoContent(500)
+	}
+
+	return c.Render(200, "index", notes)
+}
+
 func GetPreviewLinks(c echo.Context) error {
-	db, err := sql.Open("sqlite", "./db/notes.db")
+	notes, err := getAllPreviews()
 	if err != nil {
-		log.Panic(err)
-		return c.NoContent(500)
-	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
-	}
-	rows, err := tx.Query(
-		`
-            SELECT id, title FROM notes
-            ORDER BY modified_at DESC;
-        `,
-	)
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
-	}
-	notes := []Note{}
-	for rows.Next() {
-		n := Note{}
-		err = rows.Scan(&n.ID, &n.Title)
-		if err != nil {
-			log.Panic(err)
-			tx.Rollback()
-			return c.NoContent(500)
-		}
-		notes = append(notes, n)
-	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
 		return c.NoContent(500)
 	}
 
@@ -145,6 +119,50 @@ func PutTitle(c echo.Context) error {
 	}
 
 	return c.Render(200, "title", Note{ID: note_id, Title: title})
+}
+
+func getAllPreviews() ([]Note, error) {
+	notes := []Note{}
+	db, err := sql.Open("sqlite", "./db/notes.db")
+	if err != nil {
+		log.Panic(err)
+		return notes, err
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return notes, err
+	}
+	rows, err := tx.Query(
+		`
+            SELECT id, title FROM notes
+            ORDER BY modified_at DESC;
+        `,
+	)
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return notes, err
+	}
+	for rows.Next() {
+		n := Note{}
+		err = rows.Scan(&n.ID, &n.Title)
+		if err != nil {
+			log.Panic(err)
+			tx.Rollback()
+			return notes, err
+		}
+		notes = append(notes, n)
+	}
+	if err = tx.Commit(); err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return notes, err
+	}
+
+	return notes, nil
 }
 
 func getContentByNoteId(note_id int) (Note, error) {

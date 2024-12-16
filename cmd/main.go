@@ -3,9 +3,7 @@ package main
 import (
 	"html/template"
 	"io"
-	"log"
 
-	"github.com/jadenrose/go-note/cmd/notes"
 	"github.com/jadenrose/go-note/cmd/routes"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -35,14 +33,7 @@ func main() {
 	e.Static("/img", "img")
 	e.Static("/js", "js")
 
-	e.GET("/", func(c echo.Context) error {
-		notes, err := notes.GetAllNotes()
-		if err != nil {
-			log.Panic(err)
-			return c.NoContent(500)
-		}
-		return c.Render(200, "index", notes)
-	})
+	e.GET("/", routes.Index)
 
 	e.GET("/preview-links", routes.GetPreviewLinks)
 	e.GET("/notes/:note_id", routes.GetNoteContent)

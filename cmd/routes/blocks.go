@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/jadenrose/go-note/cmd/notes"
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,7 +21,7 @@ func GetNewBlock(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
 	}
-	return c.Render(200, "block-editor", notes.Block{NoteID: note_id})
+	return c.Render(200, "block-editor", Block{NoteID: note_id})
 }
 
 func GetBlockEditor(c echo.Context) error {
