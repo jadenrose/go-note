@@ -58,49 +58,5 @@ func main() {
 	e.PUT("/blocks/:block_id/move", routes.MoveBlock)
 	e.DELETE("/blocks/:block_id", routes.DeleteBlock)
 
-	// e.PUT("/blocks/:block_id/move/:direction", func(c echo.Context) error {
-	// 	id, err := strconv.Atoi(c.Param("block_id"))
-	// 	if err != nil {
-	// 		return c.String(400, "Missing or invalid param :block_id")
-	// 	}
-	// 	block, err := notes.GetBlock(id)
-	// 	if err != nil {
-	// 		log.Panic(err)
-	// 		return c.NoContent(404)
-	// 	}
-	// 	direction := c.Param("direction")
-	// 	switch direction {
-	// 	default:
-	// 		return c.String(422, "Direction must be one of: up, down, top, bottom")
-	// 	case "up":
-	// 		err = notes.MoveBlock(block, block.SortOrder-1)
-	// 	case "down":
-	// 		err = notes.MoveBlock(block, block.SortOrder+1)
-	// 	case "top":
-	// 		err = notes.MoveBlock(block, 0)
-	// 	case "bottom":
-	// 		last_sort_order, err := notes.GetLastSortOrder(block)
-	// 		if err != nil {
-	// 			log.Panic(err)
-	// 			return c.NoContent(500)
-	// 		}
-	// 		err = notes.MoveBlock(block, last_sort_order)
-	// 		if err != nil {
-	// 			log.Panic(err)
-	// 			return c.NoContent(500)
-	// 		}
-	// 	}
-	// 	if err != nil {
-	// 		log.Panic(err)
-	// 		return c.NoContent(500)
-	// 	}
-	// 	note, err := notes.GetNote(block.NoteID)
-	// 	if err != nil {
-	// 		log.Panic(err)
-	// 		return c.NoContent(500)
-	// 	}
-	// 	return c.Render(200, "note-content", note)
-	// })
-
 	e.Logger.Fatal(e.Start(":1337"))
 }
