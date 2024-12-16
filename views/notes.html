@@ -1,0 +1,38 @@
+{{block "main" .}}
+    <main>
+        <div id="note" class="note" hx-get="/notes/{{.ID}}" hx-trigger="load">
+            {{template "note-content" .}}
+        </div>
+
+        {{template "add-new-block" .}}
+    </main>
+{{end}}
+
+{{block "note-content" .}}
+    {{template "title" .}}
+    {{template "blocks" .}}
+{{end}}
+
+{{block "title" .}}
+    <h1 class="title" hx-get="/notes/{{.ID}}/edit" hx-swap="outerHTML">
+        {{.Title}}
+    </h1>
+    {{template "preview-oob" .}}
+{{end}}
+
+{{block "title-editor" .}}
+    <input
+        id="title-editor"
+        class="title-editor"
+        name="title"
+        required
+        autofocus
+        onfocus="this.select();"
+        hx-put="/notes/{{.ID}}"
+        hx-swap="outerHTML"
+        hx-trigger="blur, keydown[/Enter|Escape/.test(key)]"
+        {{if .Title}}
+            value="{{.Title}}"
+        {{end}}
+    />
+{{end}}

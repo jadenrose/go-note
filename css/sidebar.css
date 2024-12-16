@@ -1,0 +1,50 @@
+.sidebar {
+    height: 100vh;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-top: 2rem;
+    background-color: var(--bg-1);
+    background-image: var(--bg-gradient);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.logo {
+    color: var(--fg-0);
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 2rem;
+    font-style: oblique;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem;
+    user-select: none;
+    width: 12rem;
+    margin: auto;
+    margin-bottom: 0.25rem;
+}
+
+.preview-links {
+    flex: 0 1 100%;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.75rem 0 4rem;
+    list-style: none;
+}
+
+.preview-link {
+    font-size: 0.75rem;
+    text-decoration: none;
+    margin-bottom: 0.33rem;
+}
+
+.new-note {
+    padding: 1rem;
+    font-size: 0.875rem;
+    font-style: oblique;
+}
+
+.new-note > svg {
+    width: 1.5rem;
+}

@@ -1,0 +1,11 @@
+{{block "index" .}}
+    <!doctype html>
+    <html lang="en">
+        {{template "head"}}
+        <body>
+            {{template "sidebar" .}}
+
+            {{template "main" index . 0}}
+        </body>
+    </html>
+{{end}}
