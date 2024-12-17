@@ -111,39 +111,41 @@ main {
     border-radius: 0.125rem;
 }
 
-.standard-button {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+@layer base {
+    .standard-button {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
 
-    color: var(--fg-1);
-    background-color: rgba(0, 0, 0, 0.07);
-    font-family: inherit;
-    font-size: 0.875rem;
-    text-align: left;
+        color: var(--fg-1);
+        background-color: rgba(0, 0, 0, 0.07);
+        font-family: inherit;
+        font-size: 0.875rem;
+        text-align: left;
 
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    padding: 0.67rem 1rem;
-    border-radius: 0 0.125rem 0.125rem 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        padding: 0.67rem 1rem;
+        border-radius: 0 0.125rem 0.125rem 0;
 
-    border: none;
-    border-width: 0 0.25rem 0 0.25rem;
-    border-style: solid;
-    border-color: transparent;
+        border: none;
+        border-width: 0 0.25rem 0 0.25rem;
+        border-style: solid;
+        border-color: transparent;
 
-    transition:
-        border-color 0.1s ease-out,
-        background-color 0.1s ease-out,
-        padding 0.1s ease-out;
-}
+        transition:
+            border-color 0.1s ease-out,
+            background-color 0.1s ease-out,
+            padding 0.1s ease-out;
+    }
 
-.standard-button:hover {
-    color: var(--fg-0);
-    background-color: var(--bg-opacity-darken);
-    border-left-color: var(--fg-0);
-    padding-left: 1.25rem;
-    padding-right: 0.75rem;
+    .standard-button:hover {
+        color: var(--fg-0);
+        background-color: var(--bg-opacity-darken);
+        border-left-color: var(--fg-0);
+        padding-left: 1.25rem;
+        padding-right: 0.75rem;
+    }
 }

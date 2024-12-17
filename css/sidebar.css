@@ -33,18 +33,120 @@
     list-style: none;
 }
 
+.preview {
+    position: relative;
+}
+
+@keyframes fade-out {
+    to {
+        opacity: 0;
+        margin-bottom: -43px;
+    }
+}
+
+.preview.htmx-swapping {
+    animation: fade-out 0.4s forwards cubic-bezier(0.43, -0.08, 0, 1.1);
+}
+
 .preview-link {
     font-size: 0.75rem;
     text-decoration: none;
     margin-bottom: 0.33rem;
 }
 
+.preview-more-options {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 0rem;
+    translate: 0 -50%;
+    border: none;
+    background: none;
+    height: 100%;
+    width: 1.75rem;
+    padding: 0 0.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--fg-0);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s ease-out;
+}
+.preview:hover > .preview-more-options:not(:hover) {
+    opacity: 0.4;
+    pointer-events: initial;
+}
+.preview-more-options > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.preview-more-options:hover {
+    opacity: 1;
+    pointer-events: initial;
+}
+
+@keyframes slide-in-from-right {
+    from {
+        translate: 110% 0;
+    }
+    to {
+        translate: 0 0;
+    }
+}
+
+@keyframes slide-out-to-right {
+    from {
+        translate: 0% 0;
+    }
+    to {
+        translate: 110% 0;
+    }
+}
+
+.more-options {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    animation: slide-in-from-right 0.15s forwards
+        cubic-bezier(0.15, 0.68, 0, 1.16);
+}
+
+.more-options.htmx-swapping {
+    animation: slide-out-to-right 0.15s forwards cubic-bezier(1, -0.29, 0.46, 1);
+}
+
+.more-option {
+    height: 100%;
+}
+
+.more-option > .standard-button {
+    height: 100%;
+    padding: 0.125rem;
+    width: 2.5rem;
+    justify-content: center;
+}
+
+.more-option > .standard-button:hover {
+    padding-left: 0.25rem;
+    padding-right: 0rem;
+}
+
 .new-note {
-    padding: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
     font-size: 0.875rem;
     font-style: oblique;
 }
 
 .new-note > svg {
-    width: 1.5rem;
+    width: 1.25rem;
 }

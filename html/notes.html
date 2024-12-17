@@ -1,11 +1,29 @@
 {{block "main" .}}
     <main>
-        <div id="note" class="note" hx-get="/notes/{{.ID}}" hx-trigger="load">
+        <div id="note" class="note">
             {{template "note-content" .}}
         </div>
 
         {{template "add-new-block" .}}
     </main>
+{{end}}
+
+{{define "new-note"}}
+    <input
+        id="title-editor"
+        class="title-editor"
+        name="title"
+        autofocus
+        hx-post="/notes"
+        hx-target="#note"
+        hx-trigger="blur, keydown[/Enter|Escape/.test(key)]"
+    />
+{{end}}
+
+{{block "new-note-block-editor" .}}
+    {{template "title" .}}
+    {{template "block-editor" index .Blocks 0}}
+    {{template "insert-preview-oob" .}}
 {{end}}
 
 {{block "note-content" .}}
@@ -14,9 +32,18 @@
 {{end}}
 
 {{block "title" .}}
-    <h1 class="title" hx-get="/notes/{{.ID}}/edit" hx-swap="outerHTML">
+    <h1
+        id="title"
+        class="title"
+        hx-get="/notes/{{.ID}}/edit"
+        hx-swap="outerHTML"
+    >
         {{.Title}}
     </h1>
+{{end}}
+
+{{block "replace-title" .}}
+    {{template "title" .}}
     {{template "preview-oob" .}}
 {{end}}
 
@@ -25,7 +52,6 @@
         id="title-editor"
         class="title-editor"
         name="title"
-        required
         autofocus
         onfocus="this.select();"
         hx-put="/notes/{{.ID}}"
