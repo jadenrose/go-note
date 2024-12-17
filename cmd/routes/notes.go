@@ -17,7 +17,16 @@ type Note struct {
 func Index(c echo.Context) error {
 	notes, err := getAllPreviews()
 	if err != nil {
+		log.Panic(err)
 		return c.NoContent(500)
+	}
+	if len(notes) > 0 {
+		note, err := getContentByNoteId(notes[0].ID)
+		if err != nil {
+			log.Panic(err)
+			return c.NoContent(500)
+		}
+		notes[0] = note
 	}
 
 	return c.Render(200, "index", notes)
@@ -39,7 +48,8 @@ func GetNoteContent(c echo.Context) error {
 	}
 	note, err := getContentByNoteId(note_id)
 	if err != nil {
-		return c.NoContent(400)
+		log.Panic(err)
+		return c.NoContent(404)
 	}
 
 	return c.Render(200, "note-content", note)
@@ -118,7 +128,116 @@ func PutTitle(c echo.Context) error {
 		return c.NoContent(500)
 	}
 
-	return c.Render(200, "title", Note{ID: note_id, Title: title})
+	return c.Render(200, "replace-title", Note{ID: note_id, Title: title})
+}
+
+func GetNewNote(c echo.Context) error {
+	return c.Render(200, "new-note", nil)
+}
+
+func PostNote(c echo.Context) error {
+	title := c.FormValue("title")
+	if len(title) == 0 {
+		title = "Untitled Note"
+	}
+	db, err := sql.Open("sqlite", "./db/notes.db")
+	if err != nil {
+		log.Panic(err)
+		return c.NoContent(500)
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
+	res, err := tx.Exec("INSERT INTO notes (title) VALUES (?);", title)
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
+	if err = tx.Commit(); err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
+
+	return c.Render(
+		200,
+		"new-note-block-editor",
+		Note{
+			ID:     int(id),
+			Title:  title,
+			Blocks: []Block{{NoteID: int(id)}}},
+	)
+}
+
+func ShowMoreOptions(c echo.Context) error {
+	note_id, err := strconv.Atoi(c.QueryParam("note_id"))
+	if err != nil {
+		return c.String(400, "Missing or invalid param ?note_id")
+	}
+
+	return c.Render(200, "more-options", Note{ID: note_id})
+}
+
+func HideMoreOptions(c echo.Context) error {
+	note_id, err := strconv.Atoi(c.QueryParam("note_id"))
+	if err != nil {
+		return c.String(400, "Missing or invalid param ?note_id")
+	}
+
+	return c.Render(200, "show-more-options", Note{ID: note_id})
+}
+
+func DeleteNote(c echo.Context) error {
+	note_id, err := strconv.Atoi(c.Param("note_id"))
+	if err != nil {
+		return c.String(400, "Missing or invalid param :note_id")
+	}
+	db, err := sql.Open("sqlite", "./db/notes.db")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return err
+	}
+	if _, err = tx.Exec(
+		"DELETE FROM blocks WHERE note_id = ?;",
+		note_id,
+	); err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return err
+	}
+	if _, err = tx.Exec(
+		"DELETE FROM notes WHERE id = ?;",
+		note_id,
+	); err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
+
+	return c.NoContent(200)
 }
 
 func getAllPreviews() ([]Note, error) {
@@ -183,12 +302,14 @@ func getContentByNoteId(note_id int) (Note, error) {
                 n.id,
                 n.title,
                 b.id,
+                b.note_id,
                 b.sort_order,
                 b.content
-            FROM notes n, blocks b
+            FROM notes n
+            LEFT JOIN blocks b
+            ON b.note_id = n.id
             WHERE n.id = ?
-            AND b.note_id = n.id
-            ORDER BY b.sort_order ASC
+            ORDER BY sort_order ASC;
         `,
 		note_id,
 	)
@@ -197,18 +318,22 @@ func getContentByNoteId(note_id int) (Note, error) {
 		return note, err
 	}
 	for rows.Next() {
-		block := Block{}
+		block := MaybeBlock{}
 		if err = rows.Scan(
 			&note.ID,
 			&note.Title,
 			&block.ID,
+			&block.NoteID,
 			&block.SortOrder,
 			&block.Content,
 		); err != nil {
 			tx.Rollback()
 			return note, err
 		}
-		note.Blocks = append(note.Blocks, block)
+
+		if block.Valid() {
+			note.Blocks = append(note.Blocks, block.Value())
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()

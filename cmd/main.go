@@ -20,7 +20,7 @@ func (t *Templates) Render(w io.Writer, name string, data interface{}, c echo.Co
 
 func newTemplate() *Templates {
 	return &Templates{
-		Templates: template.Must(template.ParseGlob("views/*.html")),
+		Templates: template.Must(template.ParseGlob("html/*.html")),
 	}
 }
 
@@ -36,6 +36,12 @@ func main() {
 	e.GET("/", routes.Index)
 
 	e.GET("/preview-links", routes.GetPreviewLinks)
+	e.GET("/more-options/show", routes.ShowMoreOptions)
+	e.GET("/more-options/hide", routes.HideMoreOptions)
+	e.DELETE("/notes/:note_id", routes.DeleteNote)
+
+	e.GET("/notes/new", routes.GetNewNote)
+	e.POST("/notes", routes.PostNote)
 	e.GET("/notes/:note_id", routes.GetNoteContent)
 	e.GET("/notes/:note_id/edit", routes.GetTitleEditor)
 	e.PUT("/notes/:note_id", routes.PutTitle)

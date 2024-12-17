@@ -1,0 +1,123 @@
+.block,
+.block-editor {
+    font-size: 0.875rem;
+    line-height: 1.8;
+}
+
+.block-editor {
+    display: block;
+    border: none;
+    outline: none;
+    color: inherit;
+    background: var(--bg-opacity-darken);
+    font-family: inherit;
+    letter-spacing: inherit;
+    padding: 0.5rem;
+    width: 100%;
+}
+
+.block:hover {
+    background-color: var(--bg-opacity-darken);
+}
+
+.block-container {
+    position: relative;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    margin-left: 0.5rem;
+    transition: background-color 0.1s ease-out;
+}
+
+.block {
+    padding: 0.125rem 0.5rem;
+}
+
+.block-controls {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    translate: -100% -50%;
+    display: flex;
+    z-index: 2;
+}
+
+.block-control {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    padding: 0;
+    width: 1.75rem;
+    height: 100%;
+    padding: 0.33rem;
+    color: inherit;
+    cursor: pointer;
+    color: var(--fg-1);
+    border-radius: 0.125rem;
+    transition:
+        color 0.1s ease-out,
+        background-color 0.1s ease-out,
+        opacity 0.1s ease-out;
+    opacity: 0;
+}
+
+.block-control > svg {
+    display: block;
+    width: 100%;
+}
+.block-control:hover {
+    pointer-events: initial;
+    color: var(--fg-0);
+    background-color: var(--bg-opacity-darken);
+}
+.block-container:hover .block-control {
+    opacity: 1;
+    pointer-events: initial;
+}
+.block-container:has(+ .block-mover) .block-control {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.block-mover {
+    display: flex;
+}
+
+.block-mover-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0.5rem 0.25rem;
+    width: 3rem;
+    height: 2rem;
+}
+.block-mover-button:hover {
+    padding-left: 0.375rem;
+    padding-right: 0.125rem;
+}
+.block-mover-button > svg {
+    width: 100%;
+    max-height: 100%;
+}
+
+.add-new-block {
+    display: flex;
+    align-items: center;
+}
+
+.add-new-block-label {
+    display: block;
+    color: var(--fg-0);
+    font-size: 0.75rem;
+    font-weight: 300;
+    font-style: oblique;
+    margin-left: 0.5rem;
+    opacity: 0.3;
+    transition: opacity 0.1s ease-out;
+    user-select: none;
+}
+.add-new-block-button:hover ~ .add-new-block-label {
+    opacity: 0.7;
+}

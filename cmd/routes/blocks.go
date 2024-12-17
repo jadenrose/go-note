@@ -16,6 +16,29 @@ type Block struct {
 	Content   string `json:"content"`
 }
 
+type MaybeBlock struct {
+	ID        sql.NullInt64
+	NoteID    sql.NullInt64
+	SortOrder sql.NullInt64
+	Content   sql.NullString
+}
+
+func (mb MaybeBlock) Valid() bool {
+	return (mb.ID.Valid &&
+		mb.NoteID.Valid &&
+		mb.SortOrder.Valid &&
+		mb.Content.Valid)
+}
+
+func (mb MaybeBlock) Value() Block {
+	return Block{
+		ID:        int(mb.ID.Int64),
+		NoteID:    int(mb.NoteID.Int64),
+		SortOrder: int(mb.SortOrder.Int64),
+		Content:   string(mb.Content.String),
+	}
+}
+
 func GetNewBlock(c echo.Context) error {
 	note_id, err := strconv.Atoi(c.QueryParam("note_id"))
 	if err != nil {
@@ -471,7 +494,7 @@ func getLastSortOrderUsed(note_id int) (int, error) {
 		return -1, err
 	}
 	defer db.Close()
-	var sort_order int
+	var sort_order sql.NullInt64
 	row := db.QueryRow(
 		`
             SELECT MAX(sort_order)
@@ -480,7 +503,12 @@ func getLastSortOrderUsed(note_id int) (int, error) {
         `,
 		note_id,
 	)
-	err = row.Scan(&sort_order)
+	if err = row.Scan(&sort_order); err != nil {
+		return -1, err
+	}
+	if sort_order.Valid {
+		sort_order.Int64 = 0
+	}
 
-	return sort_order, err
+	return int(sort_order.Int64), nil
 }

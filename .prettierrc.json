@@ -6,7 +6,8 @@
       "options": {
         "parser": "go-template",
         "tabWidth": 4,
-        "goTemplateBracketSpacing": false
+        "goTemplateBracketSpacing": false,
+        "printWidth": 65
       }
     },
     {
