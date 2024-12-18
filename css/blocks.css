@@ -12,7 +12,7 @@
     background: var(--bg-opacity-darken);
     font-family: inherit;
     letter-spacing: inherit;
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     width: 100%;
 }
 
@@ -23,13 +23,12 @@
 .block-container {
     position: relative;
     border-radius: 0.25rem;
-    margin-bottom: 0.5rem;
     margin-left: 0.5rem;
     transition: background-color 0.1s ease-out;
 }
 
 .block {
-    padding: 0.125rem 0.5rem;
+    padding: 0.25rem 0.75rem;
 }
 
 .block-controls {

@@ -2,6 +2,21 @@
     margin-bottom: 1rem;
 }
 
+.note:has(.no-notes) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.no-notes {
+    margin-bottom: 1rem;
+    font-style: oblique;
+    color: var(--fg-1);
+}
+
 .title,
 .title-editor {
     font-size: 2rem;
