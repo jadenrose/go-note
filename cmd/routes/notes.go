@@ -14,28 +14,97 @@ type Note struct {
 	Blocks []Block `json:"content"`
 }
 
+type MaybeNote struct {
+	ID     sql.NullInt64
+	Title  sql.NullString
+	Blocks []Block
+}
+
+func (mn MaybeNote) Valid() bool {
+	return mn.ID.Valid && mn.Title.Valid
+}
+
+func (mn MaybeNote) Value() Note {
+	return Note{
+		ID:     int(mn.ID.Int64),
+		Title:  mn.Title.String,
+		Blocks: mn.Blocks,
+	}
+}
+
 func Index(c echo.Context) error {
-	notes, err := getAllPreviews()
-	if err != nil {
+	agent := NewDBAgent()
+	agent.Catcher = func(err error) error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
+	}
+	err := agent.Open("./db/notes.db")
+	if err != nil {
+		return agent.Catcher(err)
+	}
+	defer agent.Close()
+
+	if _, err := agent.Exec(
+		`
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                title TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS blocks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sort_order INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                note_id INTEGER NOT NULL,
+                FOREIGN KEY (note_id) REFERENCES notes (id)
+            );
+        `,
+	); err != nil {
+		return agent.Catcher(err)
+	}
+	notes, err := getAllPreviews(agent)
+	if err != nil {
+		return agent.Catcher(err)
 	}
 	if len(notes) > 0 {
 		note, err := getContentByNoteId(notes[0].ID)
 		if err != nil {
-			log.Panic(err)
-			return c.NoContent(500)
+			return agent.Catcher(err)
 		}
 		notes[0] = note
+
+		return c.Render(200, "index", notes)
 	}
 
-	return c.Render(200, "index", notes)
+	if err = agent.Commit(); err != nil {
+		return agent.Catcher(err)
+	}
+
+	return c.Render(200, "blank-index", nil)
+
 }
 
 func GetPreviewLinks(c echo.Context) error {
-	notes, err := getAllPreviews()
-	if err != nil {
+	agent := NewDBAgent()
+	agent.Catcher = func(err error) error {
+		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
+	}
+	err := agent.Open("./db/notes.db")
+	if err != nil {
+		return agent.Catcher(err)
+	}
+	defer agent.Close()
+	notes, err := getAllPreviews(agent)
+	if err != nil {
+		return agent.Catcher(err)
+	}
+	if err = agent.Commit(); err != nil {
+		return agent.Catcher(err)
 	}
 
 	return c.Render(200, "preview-links", notes)
@@ -231,54 +300,58 @@ func DeleteNote(c echo.Context) error {
 		tx.Rollback()
 		return err
 	}
+	row := tx.QueryRow("SELECT id FROM notes ORDER BY modified_at DESC LIMIT 1;")
+	next_note_id := sql.NullInt64{}
+	if err = row.Scan(&next_note_id); err != nil {
+		if err = tx.Commit(); err != nil {
+			log.Panic(err)
+			tx.Rollback()
+			return c.NoContent(500)
+		}
+		return c.Render(200, "blank-note-oob", nil)
+	}
+	if !next_note_id.Valid {
+		if err = tx.Commit(); err != nil {
+			log.Panic(err)
+			tx.Rollback()
+			return c.NoContent(500)
+		}
+		return c.Render(200, "blank-note-oob", nil)
+	}
+	next_note, err := getContentByNoteId(int(next_note_id.Int64))
+	if err != nil {
+		log.Panic(err)
+		tx.Rollback()
+		return c.NoContent(500)
+	}
 	if err = tx.Commit(); err != nil {
 		log.Panic(err)
 		tx.Rollback()
 		return c.NoContent(500)
 	}
 
-	return c.NoContent(200)
+	return c.Render(200, "note-oob", next_note)
+
 }
 
-func getAllPreviews() ([]Note, error) {
+func getAllPreviews(agent *DBAgent) ([]Note, error) {
 	notes := []Note{}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
-		log.Panic(err)
-		return notes, err
-	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return notes, err
-	}
-	rows, err := tx.Query(
+	rows, err := agent.Query(
 		`
             SELECT id, title FROM notes
             ORDER BY modified_at DESC;
         `,
 	)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
 		return notes, err
 	}
 	for rows.Next() {
 		n := Note{}
 		err = rows.Scan(&n.ID, &n.Title)
 		if err != nil {
-			log.Panic(err)
-			tx.Rollback()
 			return notes, err
 		}
 		notes = append(notes, n)
-	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return notes, err
 	}
 
 	return notes, nil

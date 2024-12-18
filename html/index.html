@@ -9,3 +9,15 @@
         </body>
     </html>
 {{end}}
+
+{{block "blank-index" .}}
+    <!doctype html>
+    <html lang="en">
+        {{template "head"}}
+        <body>
+            {{template "sidebar" .}}
+
+            {{template "blank-main"}}
+        </body>
+    </html>
+{{end}}

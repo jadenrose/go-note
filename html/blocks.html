@@ -56,23 +56,34 @@
     </p>
 {{end}}
 
-{{block "block-editor" .}}
+{{block "block-editor--new" .}}
     <input
         id="block-editor"
         name="content"
         class="block-editor"
-        {{if .ID}}
-            hx-put="/blocks/{{.ID}}"
-        {{else}}
-            hx-post="/blocks?note_id={{.NoteID}}"
-        {{end}}
+        hx-post="/blocks?note_id={{.NoteID}}"
         hx-trigger="blur, keydown[/Enter|Escape/.test(key)]"
         hx-swap="outerHTML"
         autofocus
-        {{if .Content}}
-            value="{{.Content}}"
-        {{end}}
     />
+{{end}}
+
+{{block "block-editor--existing" .}}
+    <input
+        id="block-editor"
+        name="content"
+        class="block-editor"
+        hx-put="/blocks/{{.ID}}"
+        hx-trigger="blur, keydown[/Enter|Escape/.test(key)]"
+        hx-swap="outerHTML"
+        autofocus
+        value="{{.Content}}"
+    />
+{{end}}
+
+{{block "block-editor--afterpost" .}}
+    {{template "block-container" .}}
+    {{template "block-editor--new" .}}
 {{end}}
 
 {{block "block-mover" .}}

@@ -1,10 +1,12 @@
 {{block "main" .}}
-    <main>
-        <div id="note" class="note">
-            {{template "note-content" .}}
-        </div>
+    <main id="main-container">
+        {{template "note-content" .}}
+    </main>
+{{end}}
 
-        {{template "add-new-block" .}}
+{{define "blank-main"}}
+    <main id="main-container">
+        {{template "blank-note-content"}}
     </main>
 {{end}}
 
@@ -15,20 +17,46 @@
         name="title"
         autofocus
         hx-post="/notes"
-        hx-target="#note"
+        hx-target="#main-container"
         hx-trigger="blur, keydown[/Enter|Escape/.test(key)]"
     />
 {{end}}
 
 {{block "new-note-block-editor" .}}
-    {{template "title" .}}
-    {{template "block-editor" index .Blocks 0}}
+    <div id="note" class="note">
+        {{template "title" .}}
+        {{template "block-editor--new" index .Blocks 0}}
+    </div>
+    {{template "add-new-block" .}}
     {{template "insert-preview-oob" .}}
 {{end}}
 
 {{block "note-content" .}}
-    {{template "title" .}}
-    {{template "blocks" .}}
+    <div id="note" class="note">
+        {{template "title" .}}
+        {{template "blocks" .}}
+    </div>
+    {{template "add-new-block" .}}
+{{end}}
+
+{{define "blank-note-content"}}
+    <div id="note" class="note">
+        <p class="no-notes">no notes yet...</p>
+
+        {{template "new-note-button"}}
+    </div>
+{{end}}
+
+{{block "note-oob" .}}
+    <main id="main-container" hx-swap-oob="true">
+        {{template "note-content" .}}
+    </main>
+{{end}}
+
+{{define "blank-note-oob"}}
+    <main id="main-container" hx-swap-oob="true">
+        {{template "blank-note-content" .}}
+    </main>
 {{end}}
 
 {{block "title" .}}

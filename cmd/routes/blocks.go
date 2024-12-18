@@ -44,7 +44,7 @@ func GetNewBlock(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
 	}
-	return c.Render(200, "block-editor", Block{NoteID: note_id})
+	return c.Render(200, "block-editor--new", Block{NoteID: note_id})
 }
 
 func GetBlockEditor(c echo.Context) error {
@@ -57,7 +57,7 @@ func GetBlockEditor(c echo.Context) error {
 		log.Panic(err)
 		return c.NoContent(404)
 	}
-	return c.Render(200, "block-editor", block)
+	return c.Render(200, "block-editor--existing", block)
 }
 
 func PostBlock(c echo.Context) error {
@@ -126,7 +126,7 @@ func PostBlock(c echo.Context) error {
 		return c.NoContent(500)
 	}
 
-	return c.Render(200, "block-container", block)
+	return c.Render(200, "block-editor--afterpost", block)
 }
 
 func PutBlock(c echo.Context) error {
@@ -481,6 +481,7 @@ func getById(block_id int) (Block, error) {
 		return block, err
 	}
 	if err = tx.Commit(); err != nil {
+		log.Panic(err)
 		tx.Rollback()
 		return block, err
 	}
