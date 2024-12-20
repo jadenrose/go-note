@@ -38,14 +38,14 @@ func Index(c echo.Context) error {
 	if agent == nil {
 		agent = NewDBAgent()
 	}
-	handleError := func(err error) error {
+	handleError := func() error {
 		log.Panic(err)
 		agent.Rollback()
 		return c.NoContent(500)
 	}
 
 	if err = agent.Open(); err != nil {
-		return handleError(err)
+		return handleError()
 	}
 	defer agent.Close()
 
@@ -67,16 +67,16 @@ func Index(c echo.Context) error {
             );
         `,
 	); err != nil {
-		return handleError(err)
+		return handleError()
 	}
 	notes, err := getAllPreviews()
 	if err != nil {
-		return handleError(err)
+		return handleError()
 	}
 	if len(notes) > 0 {
 		note, err := getContentByNoteId(notes[0].ID)
 		if err != nil {
-			return handleError(err)
+			return handleError()
 		}
 		notes[0] = note
 
@@ -84,7 +84,7 @@ func Index(c echo.Context) error {
 	}
 
 	if err = agent.Commit(); err != nil {
-		return handleError(err)
+		return handleError()
 	}
 
 	return c.Render(200, "blank-index", nil)
@@ -358,12 +358,12 @@ func getContentByNoteId(note_id int) (Note, error) {
 		agent = NewDBAgent()
 	}
 	var err error
-	handleError := func(err error) (Note, error) {
+	handleError := func() (Note, error) {
 		agent.Rollback()
 		return note, err
 	}
 	if err = agent.Open(); err != nil {
-		return handleError(err)
+		return handleError()
 	}
 	rows, err := agent.Query(
 		`
@@ -383,7 +383,7 @@ func getContentByNoteId(note_id int) (Note, error) {
 		note_id,
 	)
 	if err != nil {
-		return handleError(err)
+		return handleError()
 	}
 	for rows.Next() {
 		block := MaybeBlock{}
@@ -395,7 +395,7 @@ func getContentByNoteId(note_id int) (Note, error) {
 			&block.SortOrder,
 			&block.Content,
 		); err != nil {
-			return handleError(err)
+			return handleError()
 		}
 
 		if block.Valid() {
