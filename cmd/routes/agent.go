@@ -5,21 +5,20 @@ import (
 	"errors"
 )
 
-type Catcher func(err error) error
+var agent *DBAgent
 
 type DBAgent struct {
-	Path    string
-	DB      *sql.DB
-	Tx      *sql.Tx
-	Catcher Catcher
+	Path string
+	DB   *sql.DB
+	Tx   *sql.Tx
 }
 
 func NewDBAgent() *DBAgent {
 	return &DBAgent{}
 }
 
-func (agent *DBAgent) Open(path string) error {
-	agent.Path = path
+func (agent *DBAgent) Open() error {
+	agent.Path = "./db/notes.db"
 	db, err := sql.Open("sqlite", agent.Path)
 	if err != nil {
 		return err
@@ -58,7 +57,7 @@ func (agent *DBAgent) Rollback() error {
 
 func (agent *DBAgent) Commit() error {
 	if agent.Tx == nil {
-		return errors.New("cannot commit: transaction not in progress")
+		return nil
 	}
 
 	err := agent.Tx.Commit()
@@ -98,4 +97,17 @@ func (agent *DBAgent) Query(query string, args ...any) (*sql.Rows, error) {
 		return nil, err
 	}
 	return rows, err
+}
+
+func (agent *DBAgent) QueryRow(query string, args ...any) *sql.Row {
+	if agent.Tx == nil {
+		tx, err := agent.DB.Begin()
+		if err != nil {
+			return nil
+		}
+		agent.Tx = tx
+	}
+	row := agent.Tx.QueryRow(query, args...)
+
+	return row
 }

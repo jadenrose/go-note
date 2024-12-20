@@ -2,6 +2,7 @@ package routes
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"regexp"
 	"strconv"
@@ -52,7 +53,7 @@ func GetBlockEditor(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :block_id")
 	}
-	block, err := getById(block_id)
+	block, err := getContentByBlockId(block_id)
 	if err != nil {
 		log.Panic(err)
 		return c.NoContent(404)
@@ -61,6 +62,8 @@ func GetBlockEditor(c echo.Context) error {
 }
 
 func PostBlock(c echo.Context) error {
+	var err error
+
 	note_id, err := strconv.Atoi(c.QueryParam("note_id"))
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
@@ -70,26 +73,28 @@ func PostBlock(c echo.Context) error {
 		return c.String(422, "Content cannot be empty")
 	}
 
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
+	defer agent.Close()
 	sort_order, err := getLastSortOrderUsed(note_id)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	block := Block{NoteID: note_id, Content: content, SortOrder: sort_order + 1}
-	res, err := tx.Exec(
+	block := Block{
+		NoteID:    note_id,
+		Content:   content,
+		SortOrder: sort_order + 1,
+	}
+	res, err := agent.Exec(
 		`
             INSERT INTO blocks
                 (
@@ -109,21 +114,15 @@ func PostBlock(c echo.Context) error {
 		block.SortOrder,
 	)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
 	block.ID = int(id)
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(200, "block-editor--afterpost", block)
@@ -134,7 +133,7 @@ func PutBlock(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :block_id")
 	}
-	block, err := getById(block_id)
+	block, err := getContentByBlockId(block_id)
 	if err != nil {
 		log.Panic(err)
 		return c.NoContent(404)
@@ -147,19 +146,19 @@ func PutBlock(c echo.Context) error {
 		return c.Render(200, "block", block)
 	}
 	block.Content = content
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
-	if _, err = tx.Exec(
+	defer agent.Close()
+	if _, err = agent.Exec(
 		`
             UPDATE blocks
             SET
@@ -169,14 +168,10 @@ func PutBlock(c echo.Context) error {
 		block.Content,
 		block.ID,
 	); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(200, "block", block)
@@ -187,7 +182,7 @@ func GetBlockMover(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :block_id")
 	}
-	block, err := getById(block_id)
+	block, err := getContentByBlockId(block_id)
 	if err != nil {
 		log.Panic(err)
 		return c.NoContent(404)
@@ -209,19 +204,20 @@ func MoveBlock(c echo.Context) error {
 	if !valid || err != nil {
 		return c.String(400, "Missing or invalid param ?direction")
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err := agent.Open(); err != nil {
+		return handleError()
 	}
-	rows, err := tx.Query(
+	defer agent.Close()
+	rows, err := agent.Query(
 		`
             SELECT id, note_id FROM blocks
             WHERE note_id = (
@@ -234,29 +230,24 @@ func MoveBlock(c echo.Context) error {
 		block_id,
 	)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
 	i := 0
 	ids := []int{}
 	var note_id int
 	switch direction {
 	default:
-		log.Panic("Didn't match any valid direction")
-		tx.Rollback()
-		return c.NoContent(500)
+		err = errors.New("didn't match any valid direction")
+		return handleError()
 	case "top":
 		ids = append(ids, block_id)
 		for rows.Next() {
 			var id int
 			if err = rows.Scan(&id, &note_id); err != nil {
-				log.Panic(err)
-				tx.Rollback()
-				return c.NoContent(500)
+				return handleError()
 			}
 			if i == 0 && id == block_id {
-				tx.Rollback()
+				agent.Rollback()
 				// @TODO Use proper status code 422
 				return c.String(400, "Cannot move in that direction")
 			}
@@ -270,9 +261,7 @@ func MoveBlock(c echo.Context) error {
 		for rows.Next() {
 			var id int
 			if err = rows.Scan(&id, &note_id); err != nil {
-				log.Panic(err)
-				tx.Rollback()
-				return c.NoContent(500)
+				return handleError()
 			}
 			if id == block_id {
 				index_of_block = i
@@ -283,7 +272,7 @@ func MoveBlock(c echo.Context) error {
 
 		}
 		if index_of_block == i-1 {
-			tx.Rollback()
+			agent.Rollback()
 			// @TODO Use proper status code 422
 			return c.String(400, "Cannot move in that direction")
 		}
@@ -292,12 +281,10 @@ func MoveBlock(c echo.Context) error {
 		for rows.Next() {
 			var id int
 			if err = rows.Scan(&id, &note_id); err != nil {
-				log.Panic(err)
-				tx.Rollback()
-				return c.NoContent(500)
+				return handleError()
 			}
 			if i == 0 && id == block_id {
-				tx.Rollback()
+				agent.Rollback()
 				// @TODO Use proper status code 422
 				return c.String(400, "Cannot move in that direction")
 			} else if i > 0 && id == block_id {
@@ -314,9 +301,7 @@ func MoveBlock(c echo.Context) error {
 		for rows.Next() {
 			var id int
 			if err = rows.Scan(&id, &note_id); err != nil {
-				log.Panic(err)
-				tx.Rollback()
-				return c.NoContent(500)
+				return handleError()
 			}
 
 			if id == block_id {
@@ -331,13 +316,13 @@ func MoveBlock(c echo.Context) error {
 			i++
 		}
 		if len(ids) > i {
-			tx.Rollback()
+			agent.Rollback()
 			// @TODO Use proper status code 422
 			return c.String(400, "Cannot move in that direction")
 		}
 	}
 	for i, id := range ids {
-		if _, err = tx.Exec(
+		if _, err = agent.Exec(
 			`
                 UPDATE blocks
                 SET sort_order = ?
@@ -346,25 +331,20 @@ func MoveBlock(c echo.Context) error {
 			i,
 			id,
 		); err != nil {
-			tx.Rollback()
-			log.Panic(err)
-			return c.NoContent(500)
+			return handleError()
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	note, err := getContentByNoteId(note_id)
 	if err != nil {
-		log.Panic(err)
-		return c.NoContent(500)
+		return handleError()
 	}
 
-	return c.Render(200, "note-content", note)
+	return c.Render(200, "blocks", note)
 }
 
 func DeleteBlock(c echo.Context) error {
@@ -372,23 +352,24 @@ func DeleteBlock(c echo.Context) error {
 	if err != nil {
 		return c.String(400, "Missing or invalid param :block_id")
 	}
-	block, err := getById(block_id)
+	block, err := getContentByBlockId(block_id)
 	if err != nil {
 		return c.NoContent(404)
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err := agent.Open(); err != nil {
+		return handleError()
 	}
-	rows, err := tx.Query(
+	defer agent.Close()
+	rows, err := agent.Query(
 		`
             SELECT id, sort_order FROM blocks
             WHERE note_id = ?
@@ -398,9 +379,7 @@ func DeleteBlock(c echo.Context) error {
 		block.SortOrder,
 	)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
 	for rows.Next() {
 		block_to_move := Block{}
@@ -408,11 +387,9 @@ func DeleteBlock(c echo.Context) error {
 			&block_to_move.ID,
 			&block_to_move.SortOrder,
 		); err != nil {
-			log.Panic(err)
-			tx.Rollback()
-			return c.NoContent(500)
+			return handleError()
 		}
-		_, err = tx.Exec(
+		if _, err = agent.Exec(
 			`
                 UPDATE blocks
                 SET sort_order = ?
@@ -420,46 +397,44 @@ func DeleteBlock(c echo.Context) error {
             `,
 			block_to_move.ID,
 			block_to_move.SortOrder-1,
-		)
-		if err != nil {
-			log.Panic(err)
-			tx.Rollback()
-			return c.NoContent(500)
+		); err != nil {
+			return handleError()
 		}
 	}
-	if _, err = tx.Exec(
+	if _, err = agent.Exec(
 		`
             DELETE FROM blocks
             WHERE id = ?
         `,
 		block.ID,
 	); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 
 	}
 
 	return c.NoContent(200)
 }
 
-func getById(block_id int) (Block, error) {
+func getContentByBlockId(block_id int) (Block, error) {
+	var err error
+
 	block := Block{}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() (Block, error) {
+		log.Panic(err)
+		agent.Rollback()
 		return block, err
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		return block, err
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
-	row := tx.QueryRow(
+	row := agent.QueryRow(
 		`
             SELECT
                 id,
@@ -477,26 +452,32 @@ func getById(block_id int) (Block, error) {
 		&block.SortOrder,
 		&block.Content,
 	); err != nil {
-		tx.Rollback()
-		return block, err
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return block, err
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return block, nil
 }
 
 func getLastSortOrderUsed(note_id int) (int, error) {
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	var err error
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() (int, error) {
+		log.Panic(err)
 		return -1, err
 	}
-	defer db.Close()
+
+	if err = agent.Open(); err != nil {
+		return handleError()
+	}
+	defer agent.Close()
 	var sort_order sql.NullInt64
-	row := db.QueryRow(
+	row := agent.QueryRow(
 		`
             SELECT MAX(sort_order)
             FROM blocks
@@ -505,9 +486,9 @@ func getLastSortOrderUsed(note_id int) (int, error) {
 		note_id,
 	)
 	if err = row.Scan(&sort_order); err != nil {
-		return -1, err
+		return handleError()
 	}
-	if sort_order.Valid {
+	if !sort_order.Valid {
 		sort_order.Int64 = 0
 	}
 

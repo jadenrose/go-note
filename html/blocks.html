@@ -1,7 +1,9 @@
 {{block "blocks" .}}
-    {{range .Blocks}}
-        {{template "block-container" .}}
-    {{end}}
+    <div id="blocks">
+        {{range .Blocks}}
+            {{template "block-container" .}}
+        {{end}}
+    </div>
 {{end}}
 
 {{block "block-container" .}}
@@ -9,7 +11,6 @@
         <div id="block-controls-{{.ID}}" class="block-controls">
             <button
                 class="block-control"
-                hx-confirm="Really delete this block? (Can't be undone)"
                 hx-delete="/blocks/{{.ID}}"
                 hx-target="#block-container-{{.ID}}"
                 hx-swap="outerHTML"
@@ -87,11 +88,16 @@
 {{end}}
 
 {{block "block-mover" .}}
-    <div id="block-mover-{{.ID}}" class="block-mover">
+    <div
+        id="block-mover-{{.ID}}"
+        class="block-mover"
+        hx-target="#blocks"
+    >
         <button
             title="Cancel"
             class="block-mover-button standard-button"
             hx-get="/blocks/{{.ID}}/move/cancel"
+            hx-disinherit="hx-target"
             hx-target="#block-mover-{{.ID}}"
             hx-swap="delete"
         >
@@ -101,7 +107,6 @@
             title="Move Up"
             class="block-mover-button standard-button"
             hx-put="/blocks/{{.ID}}/move?direction=up"
-            hx-target="#note"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -122,7 +127,6 @@
             title="Move Down"
             class="block-mover-button standard-button"
             hx-put="/blocks/{{.ID}}/move?direction=down"
-            hx-target="#note"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -143,7 +147,6 @@
             title="Move to Top"
             class="block-mover-button standard-button"
             hx-put="/blocks/{{.ID}}/move?direction=top"
-            hx-target="#note"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -164,7 +167,6 @@
             title="Move to Bottom"
             class="block-mover-button standard-button"
             hx-put="/blocks/{{.ID}}/move?direction=bottom"
-            hx-target="#note"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -190,7 +192,7 @@
             class="add-new-block-button standard-button"
             title="New Text Block"
             hx-get="/blocks/new?note_id={{.ID}}"
-            hx-target="#note"
+            hx-target="#blocks"
             hx-swap="beforeend"
         >
             <svg

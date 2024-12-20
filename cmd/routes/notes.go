@@ -33,15 +33,19 @@ func (mn MaybeNote) Value() Note {
 }
 
 func Index(c echo.Context) error {
-	agent := NewDBAgent()
-	agent.Catcher = func(err error) error {
+	var err error
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func(err error) error {
 		log.Panic(err)
 		agent.Rollback()
 		return c.NoContent(500)
 	}
-	err := agent.Open("./db/notes.db")
-	if err != nil {
-		return agent.Catcher(err)
+
+	if err = agent.Open(); err != nil {
+		return handleError(err)
 	}
 	defer agent.Close()
 
@@ -63,16 +67,16 @@ func Index(c echo.Context) error {
             );
         `,
 	); err != nil {
-		return agent.Catcher(err)
+		return handleError(err)
 	}
-	notes, err := getAllPreviews(agent)
+	notes, err := getAllPreviews()
 	if err != nil {
-		return agent.Catcher(err)
+		return handleError(err)
 	}
 	if len(notes) > 0 {
 		note, err := getContentByNoteId(notes[0].ID)
 		if err != nil {
-			return agent.Catcher(err)
+			return handleError(err)
 		}
 		notes[0] = note
 
@@ -80,7 +84,7 @@ func Index(c echo.Context) error {
 	}
 
 	if err = agent.Commit(); err != nil {
-		return agent.Catcher(err)
+		return handleError(err)
 	}
 
 	return c.Render(200, "blank-index", nil)
@@ -88,29 +92,35 @@ func Index(c echo.Context) error {
 }
 
 func GetPreviewLinks(c echo.Context) error {
+	var err error
+
 	agent := NewDBAgent()
-	agent.Catcher = func(err error) error {
+	handleError := func() error {
 		log.Panic(err)
 		agent.Rollback()
 		return c.NoContent(500)
 	}
-	err := agent.Open("./db/notes.db")
-	if err != nil {
-		return agent.Catcher(err)
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
 	defer agent.Close()
-	notes, err := getAllPreviews(agent)
+	notes, err := getAllPreviews()
 	if err != nil {
-		return agent.Catcher(err)
+		return handleError()
 	}
 	if err = agent.Commit(); err != nil {
-		return agent.Catcher(err)
+		return handleError()
 	}
 
 	return c.Render(200, "preview-links", notes)
 }
 
 func GetNoteContent(c echo.Context) error {
+	var err error
+
+	if agent == nil {
+		agent = NewDBAgent()
+	}
 	note_id, err := strconv.Atoi(c.Param("note_id"))
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
@@ -125,39 +135,39 @@ func GetNoteContent(c echo.Context) error {
 }
 
 func GetTitleEditor(c echo.Context) error {
+	var err error
+
 	note_id, err := strconv.Atoi(c.Param("note_id"))
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err := agent.Open(); err != nil {
+		return handleError()
 	}
-	row := tx.QueryRow("SELECT id, title FROM notes WHERE id = ?", note_id)
+	defer agent.Close()
+	row := agent.QueryRow("SELECT id, title FROM notes WHERE id = ?", note_id)
 	note := Note{}
 	if err = row.Scan(&note.ID, &note.Title); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(200, "title-editor", note)
 }
 
 func PutTitle(c echo.Context) error {
+	var err error
+
 	note_id, err := strconv.Atoi(c.Param("note_id"))
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
@@ -166,19 +176,19 @@ func PutTitle(c echo.Context) error {
 	if len(title) == 0 {
 		return c.String(422, "Title cannot be empty")
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
-	if _, err := tx.Exec(
+	defer agent.Close()
+	if _, err := agent.Exec(
 		`
             UPDATE notes
             SET title = ?
@@ -187,14 +197,10 @@ func PutTitle(c echo.Context) error {
 		title,
 		note_id,
 	); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(200, "replace-title", Note{ID: note_id, Title: title})
@@ -205,38 +211,34 @@ func GetNewNote(c echo.Context) error {
 }
 
 func PostNote(c echo.Context) error {
+	var err error
+
 	title := c.FormValue("title")
 	if len(title) == 0 {
 		title = "Untitled Note"
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	handleError := func() error {
 		log.Panic(err)
+		agent.Rollback()
 		return c.NoContent(500)
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Open(); err != nil {
+		return handleError()
 	}
-	res, err := tx.Exec("INSERT INTO notes (title) VALUES (?);", title)
+	defer agent.Close()
+	res, err := agent.Exec("INSERT INTO notes (title) VALUES (?);", title)
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(
@@ -268,74 +270,67 @@ func HideMoreOptions(c echo.Context) error {
 }
 
 func DeleteNote(c echo.Context) error {
+	var err error
+
 	note_id, err := strconv.Atoi(c.Param("note_id"))
 	if err != nil {
 		return c.String(400, "Missing or invalid param :note_id")
 	}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
-		log.Panic(err)
-		return err
+	if agent == nil {
+		agent = NewDBAgent()
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
+	handleError := func() error {
 		log.Panic(err)
-		tx.Rollback()
-		return err
+		agent.Rollback()
+		return c.NoContent(500)
 	}
-	if _, err = tx.Exec(
+	if err = agent.Open(); err != nil {
+		return handleError()
+	}
+	defer agent.Close()
+	if _, err = agent.Exec(
 		"DELETE FROM blocks WHERE note_id = ?;",
 		note_id,
 	); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return err
+		return handleError()
 	}
-	if _, err = tx.Exec(
+	if _, err = agent.Exec(
 		"DELETE FROM notes WHERE id = ?;",
 		note_id,
 	); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return err
+		return handleError()
 	}
-	row := tx.QueryRow("SELECT id FROM notes ORDER BY modified_at DESC LIMIT 1;")
+	row := agent.QueryRow("SELECT id FROM notes ORDER BY modified_at DESC LIMIT 1;")
 	next_note_id := sql.NullInt64{}
 	if err = row.Scan(&next_note_id); err != nil {
-		if err = tx.Commit(); err != nil {
-			log.Panic(err)
-			tx.Rollback()
-			return c.NoContent(500)
+		if err = agent.Commit(); err != nil {
+			return handleError()
 		}
 		return c.Render(200, "blank-note-oob", nil)
 	}
 	if !next_note_id.Valid {
-		if err = tx.Commit(); err != nil {
-			log.Panic(err)
-			tx.Rollback()
-			return c.NoContent(500)
+		if err = agent.Commit(); err != nil {
+			return handleError()
 		}
 		return c.Render(200, "blank-note-oob", nil)
 	}
 	next_note, err := getContentByNoteId(int(next_note_id.Int64))
 	if err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+		return handleError()
 	}
-	if err = tx.Commit(); err != nil {
-		log.Panic(err)
-		tx.Rollback()
-		return c.NoContent(500)
+	if err = agent.Commit(); err != nil {
+		return handleError()
 	}
 
 	return c.Render(200, "note-oob", next_note)
 
 }
 
-func getAllPreviews(agent *DBAgent) ([]Note, error) {
+func getAllPreviews() ([]Note, error) {
 	notes := []Note{}
+	if agent == nil {
+		agent = NewDBAgent()
+	}
 	rows, err := agent.Query(
 		`
             SELECT id, title FROM notes
@@ -359,17 +354,18 @@ func getAllPreviews(agent *DBAgent) ([]Note, error) {
 
 func getContentByNoteId(note_id int) (Note, error) {
 	note := Note{}
-	db, err := sql.Open("sqlite", "./db/notes.db")
-	if err != nil {
+	if agent == nil {
+		agent = NewDBAgent()
+	}
+	var err error
+	handleError := func(err error) (Note, error) {
+		agent.Rollback()
 		return note, err
 	}
-	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		tx.Rollback()
-		return note, err
+	if err = agent.Open(); err != nil {
+		return handleError(err)
 	}
-	rows, err := tx.Query(
+	rows, err := agent.Query(
 		`
             SELECT
                 n.id,
@@ -387,8 +383,7 @@ func getContentByNoteId(note_id int) (Note, error) {
 		note_id,
 	)
 	if err != nil {
-		tx.Rollback()
-		return note, err
+		return handleError(err)
 	}
 	for rows.Next() {
 		block := MaybeBlock{}
@@ -400,17 +395,12 @@ func getContentByNoteId(note_id int) (Note, error) {
 			&block.SortOrder,
 			&block.Content,
 		); err != nil {
-			tx.Rollback()
-			return note, err
+			return handleError(err)
 		}
 
 		if block.Valid() {
 			note.Blocks = append(note.Blocks, block.Value())
 		}
-	}
-	if err = tx.Commit(); err != nil {
-		tx.Rollback()
-		return note, err
 	}
 
 	return note, nil
