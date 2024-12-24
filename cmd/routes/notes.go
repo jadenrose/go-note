@@ -9,15 +9,19 @@ import (
 )
 
 type Note struct {
-	ID     int     `json:"id"`
-	Title  string  `json:"title"`
-	Blocks []Block `json:"content"`
+	ID         int
+	Title      string
+	CreatedAt  string
+	ModifiedAt string
+	Blocks     []Block
 }
 
 type MaybeNote struct {
-	ID     sql.NullInt64
-	Title  sql.NullString
-	Blocks []Block
+	ID         sql.NullInt64
+	Title      sql.NullString
+	CreatedAt  sql.NullString
+	ModifiedAt sql.NullString
+	Blocks     []Block
 }
 
 func (mn MaybeNote) Valid() bool {
@@ -49,26 +53,6 @@ func Index(c echo.Context) error {
 	}
 	defer agent.Close()
 
-	if _, err := agent.Exec(
-		`
-            CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                title TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS blocks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sort_order INTEGER NOT NULL,
-                content TEXT NOT NULL,
-                note_id INTEGER NOT NULL,
-                FOREIGN KEY (note_id) REFERENCES notes (id)
-            );
-        `,
-	); err != nil {
-		return handleError()
-	}
 	notes, err := getAllPreviews()
 	if err != nil {
 		return handleError()
@@ -191,8 +175,10 @@ func PutTitle(c echo.Context) error {
 	if _, err := agent.Exec(
 		`
             UPDATE notes
-            SET title = ?
-            WHERE id = ?
+            SET
+                title = ?
+                modified_at = CURRENT_TIMESTAMP
+            WHERE id = ?;
         `,
 		title,
 		note_id,
@@ -233,8 +219,11 @@ func PostNote(c echo.Context) error {
 	if err != nil {
 		return handleError()
 	}
-	id, err := res.LastInsertId()
+	new_note_id, err := res.LastInsertId()
 	if err != nil {
+		return handleError()
+	}
+	if err = archiveOldNotes(); err != nil {
 		return handleError()
 	}
 	if err = agent.Commit(); err != nil {
@@ -245,9 +234,9 @@ func PostNote(c echo.Context) error {
 		200,
 		"new-note-block-editor",
 		Note{
-			ID:     int(id),
+			ID:     int(new_note_id),
 			Title:  title,
-			Blocks: []Block{{NoteID: int(id)}}},
+			Blocks: []Block{{NoteID: int(new_note_id)}}},
 	)
 }
 
@@ -288,19 +277,16 @@ func DeleteNote(c echo.Context) error {
 		return handleError()
 	}
 	defer agent.Close()
-	if _, err = agent.Exec(
-		"DELETE FROM blocks WHERE note_id = ?;",
-		note_id,
-	); err != nil {
+
+	if _, err = archiveNoteById(note_id); err != nil {
 		return handleError()
 	}
-	if _, err = agent.Exec(
-		"DELETE FROM notes WHERE id = ?;",
-		note_id,
-	); err != nil {
-		return handleError()
-	}
-	row := agent.QueryRow("SELECT id FROM notes ORDER BY modified_at DESC LIMIT 1;")
+
+	row := agent.QueryRow(
+		`
+        SELECT id FROM notes
+        ORDER BY modified_at DESC LIMIT 1;
+        `)
 	next_note_id := sql.NullInt64{}
 	if err = row.Scan(&next_note_id); err != nil {
 		if err = agent.Commit(); err != nil {

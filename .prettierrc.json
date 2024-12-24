@@ -20,7 +20,7 @@
       "files": ["*.js", "*.ts"],
       "options": {
         "useTabs": true,
-        "printWidth": 120,
+        "printWidth": 80,
         "singleQuote": true
       }
     }

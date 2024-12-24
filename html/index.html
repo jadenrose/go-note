@@ -3,9 +3,16 @@
     <html lang="en">
         {{template "head"}}
         <body>
+            <div
+                id="search-results"
+                class="search-results"
+            ></div>
+
             {{template "sidebar" .}}
 
             {{template "main" index . 0}}
+
+            {{template "footer" .}}
         </body>
     </html>
 {{end}}

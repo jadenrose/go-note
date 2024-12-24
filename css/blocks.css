@@ -1,6 +1,6 @@
 .block,
 .block-editor {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     line-height: 1.8;
 }
 
@@ -9,15 +9,15 @@
     border: none;
     outline: none;
     color: inherit;
-    background: var(--bg-opacity-darken);
+    background: var(--bg-opacity-strong);
     font-family: inherit;
     letter-spacing: inherit;
     padding: 0.5rem 1rem;
     width: 100%;
 }
 
-.block:hover {
-    background-color: var(--bg-opacity-darken);
+.block:not(.readonly):hover {
+    background-color: var(--bg-opacity-strong);
 }
 
 .block-container {
@@ -28,7 +28,7 @@
 }
 
 .block {
-    padding: 0.25rem 0.75rem;
+    padding: 0.25rem 0.5rem;
 }
 
 .block-controls {
@@ -68,7 +68,7 @@
 .block-control:hover {
     pointer-events: initial;
     color: var(--fg-0);
-    background-color: var(--bg-opacity-darken);
+    background-color: var(--bg-opacity-strong);
 }
 .block-container:hover .block-control {
     opacity: 1;
@@ -104,6 +104,7 @@
 .add-new-block {
     display: flex;
     align-items: center;
+    padding: 1rem 0.75rem;
 }
 
 .add-new-block-label {

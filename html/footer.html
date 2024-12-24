@@ -1,0 +1,85 @@
+{{block "footer" .}}
+    <footer id="footer">
+        <button
+            class="standard-button new-note"
+            hx-get="/notes/new"
+            hx-target="#note"
+        >
+            {{template "icon-plus"}}
+            add a new note
+        </button>
+
+        <button
+            disabled
+            class="standard-button unarchive"
+            hx-get="/archive"
+            hx-trigger="load"
+            hx-swap="outerHTML"
+        >
+            {{template "icon-loading"}}
+        </button>
+    </footer>
+{{end}}
+
+{{block "archive" .}}
+    {{if eq (len .) 0}}
+        <button
+            id="show-archive-container"
+            class="standard-button unarchive"
+            disabled
+        >
+            {{template "icon-unarchive"}}
+            <span class="notification">0</span>
+        </button>
+    {{else}}
+        <label
+            id="show-archive-container"
+            class="standard-button unarchive"
+            for="show-archive"
+        >
+            <input
+                type="checkbox"
+                class="archive-toggle"
+                id="show-archive"
+            />
+            {{template "icon-unarchive"}}
+            <span class="notification">{{len .}}</span>
+            <ul id="archive-list" class="archive-list">
+                {{range .}}
+                    <li class="archive-preview">
+                        <span class="archive-preview-title">
+                            {{.Title}}
+                        </span>
+                        <button
+                            title="Preview note"
+                            class="standard-button"
+                            hx-get="/archive/{{.ID}}"
+                            hx-target="#main-container"
+                            hx-on:click="document.getElementById('show-archive').checked = false;"
+                        >
+                            {{template "icon-eye"}}
+                        </button>
+                        <button
+                            title="Restore note"
+                            class="standard-button"
+                            hx-post="/archive/{{.ID}}"
+                            hx-target="#main-container"
+                            hx-on:click="document.getElementById('show-archive').checked = false;"
+                        >
+                            {{template "icon-unarchive"}}
+                        </button>
+                    </li>
+                {{end}}
+                <button
+                    class="plain-button clear-archive"
+                    hx-confirm="Really clear archive? THIS CANNOT BE UNDONE"
+                    hx-delete="/archive/all"
+                    hx-target="#show-archive-container"
+                    hx-swap="outerHTML"
+                >
+                    Clear Archive
+                </button>
+            </ul>
+        </label>
+    {{end}}
+{{end}}

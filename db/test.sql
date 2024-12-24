@@ -1,0 +1,5 @@
+BEGIN TRANSACTION;
+
+SELECT * FROM quick_search('ensure');
+
+END TRANSACTION;

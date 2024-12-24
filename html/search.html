@@ -1,0 +1,56 @@
+{{define "quick-search"}}
+    <form
+        id="quick-search"
+        class="quick-search"
+        hx-post="/search"
+        hx-trigger="input[target.value.length > 2] changed delay:100ms"
+        hx-target="#search-results"
+    >
+        <label
+            id="search-term-label"
+            class="search-term-label"
+            for="search-term"
+        >
+            <input
+                id="search-term"
+                name="search-term"
+                class="search-term"
+                type="search"
+                placeholder="Search notes"
+                hx-on:blur="document.getElementById('search-results-list')?.remove()"
+            />
+            {{template "icon-search"}}
+            <button
+                class="clear-search"
+                type="button"
+                onclick="document.getElementById('search-term').value = ''"
+            >
+                {{template "icon-close"}}
+            </button>
+        </label>
+    </form>
+{{end}}
+
+{{block "search-results-list" .}}
+    <ul
+        id="search-results-list"
+        class="search-results-list scrollable"
+        data-search-term="{{.SearchTerm}}"
+    >
+        {{range .Results}}
+            <li class="search-result">
+                <p class="search-result-title">{{.Title}}</p>
+                <p class="search-result-content">{{.Content}}</p>
+            </li>
+        {{end}}
+    </ul>
+{{end}}
+
+{{define "no-search-results"}}
+    <div
+        id="search-results-list"
+        class="search-results-list no-results"
+    >
+        <p>No results</p>
+    </div>
+{{end}}

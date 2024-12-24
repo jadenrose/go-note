@@ -4,6 +4,28 @@
     </main>
 {{end}}
 
+{{block "readonly-main" .}}
+    <main id="main-container" hx-swap-oob="true">
+        {{template "readonly-warning" .}}
+        {{template "readonly-note-content" .}}
+    </main>
+{{end}}
+
+{{block "readonly-warning" .}}
+    <div class="readonly-warning">
+        <span class="loud">Readonly View</span>
+        This note is still archived. Restore it to edit.
+        <button
+            class="standard-button"
+            hx-post="/archive/{{.ID}}"
+            hx-target="#main-container"
+        >
+            {{template "icon-unarchive"}}
+            Restore
+        </button>
+    </div>
+{{end}}
+
 {{define "blank-main"}}
     <main id="main-container">
         {{template "blank-note-content"}}
@@ -31,6 +53,15 @@
     {{template "insert-preview-oob" .}}
 {{end}}
 
+{{block "restored-note" .}}
+    <div id="note" class="note">
+        {{template "title" .}}
+        {{template "blocks" .}}
+    </div>
+    {{template "add-new-block" .}}
+    {{template "insert-preview-oob" .}}
+{{end}}
+
 {{block "note-content" .}}
     <div id="note" class="note">
         {{template "title" .}}
@@ -44,6 +75,13 @@
         <p class="no-notes">no notes yet...</p>
 
         {{template "new-note-button"}}
+    </div>
+{{end}}
+
+{{block "readonly-note-content" .}}
+    <div id="note" class="note">
+        {{template "readonly-title" .}}
+        {{template "readonly-blocks" .}}
     </div>
 {{end}}
 
@@ -66,6 +104,12 @@
         hx-get="/notes/{{.ID}}/edit"
         hx-swap="outerHTML"
     >
+        {{.Title}}
+    </h1>
+{{end}}
+
+{{block "readonly-title" .}}
+    <h1 id="title" class="title readonly">
         {{.Title}}
     </h1>
 {{end}}
