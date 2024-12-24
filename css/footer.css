@@ -1,0 +1,102 @@
+footer {
+    background: var(--bg-1);
+    grid-area: 2 / 1 / span 1 / span 2;
+    display: grid;
+    grid-template-columns: var(--grid-columns);
+    box-shadow: 0 0 7px rgba(0, 0, 0, 0.2);
+    overflow: visible;
+}
+
+.new-note {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    font-size: 0.875rem;
+    font-style: oblique;
+}
+
+.new-note > svg {
+    width: 1.25rem;
+}
+
+.unarchive {
+    width: fit-content;
+    overflow: visible;
+}
+
+.unarchive > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.unarchive > svg {
+    width: 1.5rem;
+}
+
+.archive-list {
+    list-style: none;
+    grid-area: 1 / 2;
+    margin: 0;
+    padding: 0rem;
+    align-self: flex-end;
+    justify-self: flex-start;
+    background: var(--bg-1);
+    font-size: 0.75rem;
+    box-shadow: var(--box-shadow-thin);
+    border-radius: 0.25rem;
+    position: absolute;
+    top: -0.25rem;
+    left: 0rem;
+    translate: 0 -100%;
+    overflow: visible;
+    transition:
+        opacity 0.2s cubic-bezier(0.22, 0.61, 0, 1.24),
+        translate 0.2s cubic-bezier(0.22, 0.61, 0, 1.24);
+    pointer-events: none;
+}
+
+.unarchive:has(input:checked) {
+    color: var(--fg-0);
+    background-color: var(--bg-0);
+    border-left-color: var(--fg-0);
+    border-right-color: var(--bg-0);
+    padding-left: 1.25rem;
+    padding-right: 0.75rem;
+}
+
+.unarchive:has(input:not(:checked)) button {
+    pointer-events: none;
+}
+
+.unarchive > input:not(:checked) ~ .archive-list {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.archive-preview {
+    display: grid;
+    grid-template-columns: auto max-content max-content;
+    align-items: center;
+    padding-left: 1rem;
+    width: 100%;
+}
+
+.archive-preview-title {
+    margin-right: 0.25rem;
+}
+
+.archive-preview svg {
+    width: 0.875rem;
+}
+
+.archive-preview .standard-button {
+    pointer-events: initial;
+}
+
+.clear-archive {
+    display: block;
+    margin: auto;
+    font-size: 0.75rem;
+    padding: 0.75rem;
+    pointer-events: initial;
+}

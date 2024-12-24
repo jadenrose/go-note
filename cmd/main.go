@@ -7,7 +7,6 @@ import (
 	"github.com/jadenrose/go-note/cmd/routes"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	_ "modernc.org/sqlite"
 )
 
 type Templates struct {
@@ -54,6 +53,13 @@ func main() {
 	e.PUT("/blocks/:block_id", routes.PutBlock)
 	e.PUT("/blocks/:block_id/move", routes.MoveBlock)
 	e.DELETE("/blocks/:block_id", routes.DeleteBlock)
+
+	e.GET("/archive", routes.GetArchiveList)
+	e.GET("/archive/:archived_note_id", routes.GetArchivedNote)
+	e.POST("/archive/:archived_note_id", routes.RestoreArchivedNote)
+	e.DELETE("/archive/all", routes.ClearArchive)
+
+	e.POST("/search", routes.QuickSearch)
 
 	e.Logger.Fatal(e.Start(":1337"))
 }

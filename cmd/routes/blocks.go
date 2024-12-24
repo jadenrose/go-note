@@ -104,10 +104,14 @@ func PostBlock(c echo.Context) error {
                 )
             VALUES
                 (
-                    ?,
-                    ?,
-                    ?
+                    $1,
+                    $2,
+                    $3
                 );
+            
+            UPDATE notes
+            SET modified_at = CURRENT_TIMESTAMP
+            WHERE id = $1;
         `,
 		block.NoteID,
 		block.Content,
@@ -161,12 +165,16 @@ func PutBlock(c echo.Context) error {
 	if _, err = agent.Exec(
 		`
             UPDATE blocks
-            SET
-                content = ?
-            WHERE id = ?;
+            SET content = $1
+            WHERE id = $2;
+
+            UPDATE notes
+            SET modified_at = CURRENT_TIMESTAMP
+            WHERE id = $3;
         `,
 		block.Content,
 		block.ID,
+		block.NoteID,
 	); err != nil {
 		return handleError()
 	}
@@ -334,6 +342,16 @@ func MoveBlock(c echo.Context) error {
 			return handleError()
 		}
 	}
+	if _, err = agent.Exec(
+		`
+        UPDATE notes
+        SET modified_at = CURRENT_TIMESTAMP
+        WHERE id = $1   
+        `,
+		note_id,
+	); err != nil {
+		return handleError()
+	}
 
 	if err = agent.Commit(); err != nil {
 		return handleError()
@@ -404,9 +422,14 @@ func DeleteBlock(c echo.Context) error {
 	if _, err = agent.Exec(
 		`
             DELETE FROM blocks
-            WHERE id = ?
+            WHERE id = $1;
+
+            UPDATE notes
+            SET modified_at = CURRENT_TIMESTAMP
+            WHERE id = $2;
         `,
 		block.ID,
+		block.NoteID,
 	); err != nil {
 		return handleError()
 	}

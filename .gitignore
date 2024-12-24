@@ -3,6 +3,6 @@
 /node_modules/
 /views/**/*.go
 
-/**/db/*
+/**/db/*.db*
 
 .DS_Store
